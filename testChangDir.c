@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <fcntl.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -15,7 +16,8 @@ void mbash();
 void cd();
 void pwd();
 void execFichier();
-char *isPathValid(char* path);
+char *isPathValidDir(char* path);
+char *isPathValidFile(char* path);
 
 int indexCaract;
 #define ETATDEPART 0
@@ -92,37 +94,37 @@ int main(int argc, char** argv) {
 					caract='\0';
 					break;
 			}
-		//printf("%c , ETAT %d\n",caract,ETAT);
+			//printf("%c , ETAT %d\n",caract,ETAT);
 
-		if(caract!='\0'){
-			caract=cmd[++indexCaract];
+			if(caract!='\0'){
+				caract=cmd[++indexCaract];
+			}
 		}
+
+
+
+		printf("commandeSwitch  %s\n",commandeSwitch);
+		//printf("%s\n",cmd);
+		//strtok(cmd," ");
+
+		if(!strcmp(commandeSwitch,"cd")){
+			cd();
+		}else if(!strcmp(commandeSwitch,"pwd")){
+			pwd();
+		}else if(!strcmp(commandeSwitch,".")){
+			execFichier();
+		}else{
+			printf("Commande non reconnue\n");
 		}
-
-
-	
-	printf("commandeSwitch  %s\n",commandeSwitch);
-	//printf("%s\n",cmd);
-	//strtok(cmd," ");
-
-	if(!strcmp(commandeSwitch,"cd")){
-		cd();
-	}else if(!strcmp(commandeSwitch,"pwd")){
-		pwd();
-	}else if(!strcmp(cmd,"./")){
-		execFichier();
-	}else{
-		printf("Commande non reconnue\n");
 	}
-}
-return 0;
+	return 0;
 }
 //verifie la validité d'un chemin
 //renvoie NULL si le chemin n'est pas valide
 //adapte le chemin si il commence par un ~
-char *isPathValid(char* path){
+char *isPathValidDir(char* path){
 
-	char* ourPath;
+	char* ourPath=NULL;
 	if(path[0]=='~'){
 		char temppath[MAXLI]="/home/";
 		strcat(temppath,getlogin());
@@ -132,13 +134,34 @@ char *isPathValid(char* path){
 	DIR* dir =-1;
 	dir = opendir(path);
 	printf("%s\n",path);
-	if (dir!=-1) {
+	if (dir) {
 		closedir(dir);
 		//le chemin est valide, on peut le retourner
 		ourPath=path;
-	} else {
+	} else{
+		printf("chemin non valide\n");
 	}
+	return(ourPath);
+}
 
+
+char *isPathValidFile(char* path){
+
+	char* ourPath=NULL;
+	if(path[0]=='~'){
+		char temppath[MAXLI]="/home/";
+		strcat(temppath,getlogin());
+		strcat(temppath,&path[1]);
+		path=temppath;
+	}
+	FILE* fi=-1;
+	fi=fopen(path,"r");
+	if(fi){
+		fclose(fi);
+		ourPath=path;
+	}else{
+		printf("chemin non valide\n");
+	}
 	return(ourPath);
 }
 
@@ -208,7 +231,7 @@ void cd(){
 
 	if(ETAT>=0){
 		//on valide le chemin
-		strcpy(cdPathValide,isPathValid(cdPathValide));
+		strcpy(cdPathValide,isPathValidDir(cdPathValide));
 		if(cdPathValide!=NULL){
 
 			chdir(cdPathValide);
@@ -227,19 +250,92 @@ void cd(){
 	   */
 }
 void execFichier(){
-	char* execPath=strtok(NULL," ");
-	char* execPathValide=isPathValid(execPath);
+	char* execPath;
+	char caractCD=cmd[indexCaract];
+	char cdPathValide[MAXLI];
+	int ETAT=0;
+	while(caractCD!='\0'){
+		switch(ETAT){
+			case CDDEPART:
+				switch(caractCD){
+					case ' ':
+						break;
+					case '/':
+						if(cmd[indexCaract-1]=='.'){
+
+							cdPathValide[0]='.';
+							cdPathValide[1]='/';
+							cdPathValide[2]='\0';
+						}else{
+							cdPathValide[0]='/';
+							cdPathValide[1]='\0';
+						}
+	
+						ETAT=CDDANSPATH;
+						break;
+					default:
+						cdPathValide[0]=caractCD;
+						cdPathValide[1]='\0';
+						ETAT=CDDANSPATH;
+						break;
+				}
+				break;
+			case CDDANSPATH:
+				switch(caractCD){
+					case ' ':
+						ETAT=CDESPACESAPRES;
+						break;
+					default:
+						int templong=strlen(cdPathValide);
+						cdPathValide[templong]=caractCD;
+						cdPathValide[templong+1]='\0';
+						break;
+				}
+
+				break;
+
+			case CDESPACESAPRES:
+				switch(caractCD){
+					case ' ':
+						break;
+					default:
+						ETAT=-1;
+						break;
+				}
+
+				break;
+
+			case CDFIN:
+
+				break;
+			default:
+				caractCD='\0';
+				break;
+		}
+
+		printf("%c , ETAT %d\n",caractCD,ETAT);
+		caractCD=cmd[++indexCaract];
+	}
+
+
+
+	printf("%s\n",cdPathValide);
+	char* execPathValide=isPathValidFile(cdPathValide);
 	if(execPathValide!=NULL){
+		printf("%s\n",execPathValide);
 		int pid=fork();
 		if(pid>0){
 			int status;
 			wait(&status);
 		}else{
-			printf("execute %s\n",execPathValide);
+			char *args[]={execPathValide,NULL};
+			char *env[]={NULL};
+			int status=execve(execPathValide,args,env);
+			printf("execute %s\nstatus=%d\n",execPathValide,status);
 		}
 
 	}else{
-		printf("Chemin: %s est non valide\n",execPath);
+		printf("Chemin: %s est non valide\n",execPathValide);
 	}
 }
 
