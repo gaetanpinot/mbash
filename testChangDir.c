@@ -249,15 +249,27 @@ void cd(){
 	   }
 	   */
 }
+#define EXDEPART 0
+#define EXDANSPATH 1
+#define EXESPACESAPRES 2
+#define EXOPTIONS 3
+#define EXFIN 4
+
 void execFichier(){
-	char* execPath;
-	char caractCD=cmd[indexCaract];
+	int longcmd=strlen(cmd);
+	cmd[longcmd]=' ';
+	cmd[longcmd+1]='\0';
+	char caractEX=cmd[indexCaract];
 	char cdPathValide[MAXLI];
+	char *options[20]={"",NULL};
+	int nbOptions=1;
+	char optionActuel[200];
+	optionActuel[0]='\0';
 	int ETAT=0;
-	while(caractCD!='\0'){
+	while(caractEX!='\0'){
 		switch(ETAT){
-			case CDDEPART:
-				switch(caractCD){
+			case EXDEPART:
+				switch(caractEX){
 					case ' ':
 						break;
 					case '/':
@@ -271,58 +283,88 @@ void execFichier(){
 							cdPathValide[1]='\0';
 						}
 	
-						ETAT=CDDANSPATH;
+						ETAT=EXDANSPATH;
 						break;
 					default:
-						cdPathValide[0]=caractCD;
+						cdPathValide[0]=caractEX;
 						cdPathValide[1]='\0';
-						ETAT=CDDANSPATH;
+						ETAT=EXDANSPATH;
 						break;
 				}
 				break;
-			case CDDANSPATH:
-				switch(caractCD){
+			case EXDANSPATH:
+				switch(caractEX){
 					case ' ':
-						ETAT=CDESPACESAPRES;
+						ETAT=EXESPACESAPRES;
 						break;
 					default:
 						int templong=strlen(cdPathValide);
-						cdPathValide[templong]=caractCD;
+						cdPathValide[templong]=caractEX;
 						cdPathValide[templong+1]='\0';
 						break;
 				}
 
 				break;
 
-			case CDESPACESAPRES:
-				switch(caractCD){
+			case EXESPACESAPRES:
+				switch(caractEX){
 					case ' ':
 						break;
 					default:
-						ETAT=-1;
+						int templong=strlen(optionActuel);
+						optionActuel[templong]=caractEX;
+						optionActuel[templong+1]='\0';
+						ETAT=EXOPTIONS;
 						break;
 				}
 
 				break;
 
-			case CDFIN:
+			case EXOPTIONS:
+
+				switch(caractEX){
+					case ' ':
+						if(strlen(optionActuel)){
+							printf("opti %d = %s\n",nbOptions,optionActuel);
+							
+							options[nbOptions]=strdup(optionActuel);
+							printf("%s\n",options[nbOptions]);
+							printf("%s\n",options[0]);
+							options[++nbOptions]=NULL;
+							optionActuel[0]='\0';
+						}
+						break;
+					default:
+						int templong=strlen(optionActuel);
+						optionActuel[templong]=caractEX;
+						optionActuel[templong+1]='\0';
+						break;
+						
+				}
+				break;
+			case EXFIN:
 
 				break;
 			default:
-				caractCD='\0';
+				caractEX='\0';
 				break;
 		}
 
-		printf("%c , ETAT %d\n",caractCD,ETAT);
-		caractCD=cmd[++indexCaract];
+		printf("%c , ETAT %d\n",caractEX,ETAT);
+		caractEX=cmd[++indexCaract];
 	}
 
+	for(int i=0;i<nbOptions;i++){
+		printf("option %d %s\n",i,options[i]);
+		printf("option %d %p\n",i,options[i]);
+	}
 
 
 	printf("%s\n",cdPathValide);
 	char* execPathValide=isPathValidFile(cdPathValide);
 	if(execPathValide!=NULL){
 		printf("%s\n",execPathValide);
+		options[0]=strdup(execPathValide);
 		int pid=fork();
 		if(pid>0){
 			int status;
@@ -330,7 +372,7 @@ void execFichier(){
 		}else{
 			char *args[]={execPathValide,NULL};
 			char *env[]={NULL};
-			int status=execve(execPathValide,args,env);
+			int status=execve(execPathValide,options,env);
 			printf("execute %s\nstatus=%d\n",execPathValide,status);
 		}
 
