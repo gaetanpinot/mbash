@@ -1,5 +1,5 @@
+
 #include <stdio.h>
-#include <signal.h>
 #include <fcntl.h>
 #include <string.h>
 #include <stdlib.h>
@@ -20,7 +20,6 @@ void execFichier();
 char *isPathValidDir(char* path);
 char *isPathValidFile(char* path);
 void execCommandeInconnu(char* commandeInconnu);
-void intProcFils(int signum);
 
 int indexCaract;
 #define ETATDEPART 0
@@ -30,104 +29,14 @@ int indexCaract;
 #define ETATPOINTEXEC 4
 #define ETATFINI 5
 int main(int argc, char** argv) {
-	while(1){
-		printf("mbash>");
-		fgets(cmd,MAXLI,stdin);
-		cmd[strlen(cmd)-1]='\0';
-		int ETAT=0;
-		indexCaract=0;
-		char caract=cmd[indexCaract];
-		char commandeSwitch[MAXLI];
-		while(caract!='\0'){
-			switch(ETAT){
-				case ETATDEPART:
-					switch(caract){
-						case '.':
-							ETAT=ETATFINI;
-							commandeSwitch[0]=caract;
-							commandeSwitch[1]='\0';
-							break;
-						case ' ':
-							break;
-						default:
-							commandeSwitch[0]=caract;
-							commandeSwitch[1]='\0';
-							ETAT=ETATALPHANUM;
-							break;
-					}
-					break;
-				case ETATALPHANUM:
-					switch(caract){
-						case ' ':
-							ETAT=ETATESPACESAPRESALPHANUM;
-							break;
-
-						case '=':
-							commandeSwitch[0]=caract;
-							commandeSwitch[1]='\0';
-							ETAT=ETATFINI;
-							break;
-						default:
-							int templong=strlen(commandeSwitch);
-							commandeSwitch[templong]=caract;
-							commandeSwitch[templong+1]='\0';
-							break;
-					}
-
-					break;
-
-				case ETATESPACESAPRESALPHANUM:
-					switch(caract){
-						case '=':
-							commandeSwitch[0]=caract;
-							commandeSwitch[1]='\0';
-							ETAT=ETATFINI;
-							break;
-						case ' ':
-							break;
-						default:
-							ETAT=ETATFINI;
-							break;
-					}
-					break;
-				case ETATFINI:
-					caract='\0';
-					break;
-				default:
-					caract='\0';
-					break;
-			}
-			//printf("%c , ETAT %d\n",caract,ETAT);
-
-			if(caract!='\0'){
-				caract=cmd[++indexCaract];
-			}
-		}
-
-
-
-		//printf("commandeSwitch  %s\n",commandeSwitch);
-		//printf("%s\n",cmd);
-		//strtok(cmd," ");
-
-		if(!strcmp(commandeSwitch,"cd")){
-			cd();
-		}else if(!strcmp(commandeSwitch,"pwd")){
-			pwd();
-		}else if(!strcmp(commandeSwitch,".")){
-			execFichier();
-		}else{
-			execCommandeInconnu(commandeSwitch);
-			//printf("Commande non reconnue\n");
-		}
-	}
+	execCommandeInconnu("yes");
+	
 	return 0;
 }
+
 void execCommandeInconnu(char* commandeInconnu){
-	char *envpath=strdup(getenv("PATH"));
+	char *envpath=getenv("PATH");
 	//printf("%s\n",envpath);
-	int longCommand=strlen(commandeInconnu);
-	char commandeReconstitue[MAXLI]=". ";
 	char *pathActu=strdup(strtok(envpath,":"));
 	char *pathValide=NULL;
 
@@ -147,33 +56,13 @@ void execCommandeInconnu(char* commandeInconnu){
 		}
 	}
 	if(pathValide){
-		//printf("path %s valide\n",pathValide);
-		int i;
-		for( i=2;i<strlen(pathValide)+2;i++){
-			commandeReconstitue[i]=pathValide[i-2];
-		}
-		int tempInd=indexCaract;
-		if(cmd[tempInd]!='\0'){
-			commandeReconstitue[i++]=' ';
-
-			char caractOptions=cmd[--tempInd];
-			while(caractOptions!='\0'){
-				//printf("charOpt %c\n",caractOptions);
-				commandeReconstitue[i++]=caractOptions;
-				caractOptions=cmd[++tempInd];;	
-			}
-			commandeReconstitue[i]=caractOptions;
-		}
-
-		//printf("%s\n",commandeReconstitue);
-		strcpy(cmd,commandeReconstitue);
-		indexCaract=1;
-		printf("Execution d'une commande inconnu à mbash, mais trouvé dans le path\n");
-		execFichier();
+		printf("path %s valide\n",pathValide);
+		execFichier(pathValide);
 	}else{
 		printf("%s n'est pas une commande valide\n",commandeInconnu);
 	}
 }
+
 //verifie la validité d'un chemin
 //renvoie NULL si le chemin n'est pas valide
 //adapte le chemin si il commence par un ~
@@ -188,13 +77,13 @@ char *isPathValidDir(char* path){
 	}
 	DIR* dir =-1;
 	dir = opendir(path);
-	//printf("%s\n",path);
+	printf("%s\n",path);
 	if (dir) {
 		closedir(dir);
 		//le chemin est valide, on peut le retourner
 		ourPath=path;
 	} else{
-		//printf("chemin non valide\n");
+		printf("chemin non valide\n");
 	}
 	return(ourPath);
 }
@@ -427,16 +316,10 @@ void execFichier(){
 			int status;
 			wait(&status);
 		}else{
-			//setpgid(0,0);
-			struct sigaction sa;
-			sa.sa_handler = intProcFils;
-			sigemptyset(&sa.sa_mask);
-			sa.sa_flags=0;
-			printf("%d\n",getpid());
-			//signal(SIGINT, intProcFils);
+			char *args[]={execPathValide,NULL};
 			char *env[]={NULL};
 			int status=execve(execPathValide,options,env);
-			//printf("execute %s\nstatus=%d\n",execPathValide,status);
+			printf("execute %s\nstatus=%d\n",execPathValide,status);
 		}
 
 	}else{
@@ -445,9 +328,3 @@ void execFichier(){
 }
 
 
-void intProcFils(int signum){
-	if(signum==SIGINT){
-		printf("Interruption de l'execution\n");
-		exit(0);
-	}
-}
