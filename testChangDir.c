@@ -21,6 +21,7 @@ char *isPathValidDir(char* path);
 char *isPathValidFile(char* path);
 void execCommandeInconnu(char* commandeInconnu);
 void intProcFils(int signum);
+int pidEnfant;
 
 int indexCaract;
 #define ETATDEPART 0
@@ -424,14 +425,12 @@ void execFichier(){
 		options[0]=strdup(execPathValide);
 		int pid=fork();
 		if(pid>0){
+			pidEnfant=pid;
+			signal(SIGINT,intProcFils);
 			int status;
 			wait(&status);
 		}else{
 			//setpgid(0,0);
-			struct sigaction sa;
-			sa.sa_handler = intProcFils;
-			sigemptyset(&sa.sa_mask);
-			sa.sa_flags=0;
 			printf("%d\n",getpid());
 			//signal(SIGINT, intProcFils);
 			char *env[]={NULL};
@@ -444,10 +443,9 @@ void execFichier(){
 	}
 }
 
-
 void intProcFils(int signum){
 	if(signum==SIGINT){
 		printf("Interruption de l'execution\n");
-		exit(0);
+		kill(pidEnfant,SIGINT);
 	}
 }
