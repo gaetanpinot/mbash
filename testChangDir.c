@@ -13,7 +13,6 @@
 
 #define MAXLI 2048
 char cmd[MAXLI];
-char path[MAXLI];
 int pathidx;
 
 void mbash();
@@ -328,10 +327,10 @@ void cd() {
 
     if (ETAT >= 0) {
         //on valide le chemin
-        strcpy(cdPathValide, isPathValidDir(cdPathValide));
-        if (cdPathValide != NULL) {
+	char* cdPathApresValid=isPathValidDir(cdPathValide);
+        if (cdPathApresValid!= NULL) {
 
-            chdir(cdPathValide);
+            chdir(cdPathApresValid);
         } else {
             printf("Chemin: %s est non valide\n", cdPathValide);
         }
@@ -479,6 +478,9 @@ void execFichier() {
 	    //variables d'environnement pour pouvoir lancer des programmes visuels
             char *env[] = {"DISPLAY=:0","TERM=xterm-256color",NULL};
             int status = execve(execPathValide, options, env);
+	    if(status==-1){
+		    printf("Erreur d'execution du programme");
+	    }
             //printf("execute %s\nstatus=%d\n",execPathValide,status);
         }
 
