@@ -9,13 +9,16 @@ char path[MAXLI];
 int pathidx;
 void mbash();
 int main(int argc, char** argv) {
-	printf("%d\n",strlen(NULL));
-	while (1) {
-    printf("Commande: ");
-    fgets(cmd, MAXLI, stdin);
-    mbash(cmd);
-  }
-  return 0;
+	char *testSTR;
+//	fgets(testSTR,4000,stdin);
+
+	testSTR="hello\b bonjour\b\b salut \b";
+	int taille=strlen(testSTR);
+	printf("%s\n",testSTR);
+	for(int i=0;i<taille;i++){
+		printf("char:'%c' val:%d\n",testSTR[i],testSTR[i]);
+	}
+	return 0;
 }
 
 void mbash() {
